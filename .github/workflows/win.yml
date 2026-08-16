@@ -9,7 +9,7 @@ on:
 jobs:
   windows:
     name: Windows x64 Qt6 Build
-    runs-on: windows-latest
+    runs-on: windows-2022
 
     strategy:
       matrix:
@@ -66,6 +66,7 @@ jobs:
         with:
           arch: x64
           sdk: ${{ env.SDK }}
+          toolset: '14.44'
 
       - name: NuGet sources.
         run: |
