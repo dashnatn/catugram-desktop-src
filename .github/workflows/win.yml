@@ -11,12 +11,6 @@ jobs:
     name: Windows x64 Qt6 Build
     runs-on: windows-2022
 
-    strategy:
-      matrix:
-        arch: [x64]
-        qt: [qt6]
-        generator: ["Ninja Multi-Config"]
-
     env:
       UPLOAD_ARTIFACT: "true"
       ONLY_CACHE: "false"
@@ -33,6 +27,11 @@ jobs:
           mklink /d %GITHUB_WORKSPACE%\TBuild %userprofile%\TBuild
           echo TBUILD=%GITHUB_WORKSPACE%\TBuild>>%GITHUB_ENV%
           echo LibrariesPath=%GITHUB_WORKSPACE%\TBuild\Libraries\win64>>%GITHUB_ENV%
+
+      - name: Enable Windows Long Paths.
+        run: |
+          git config --system core.longpaths true
+          reg add "HKLM\SYSTEM\CurrentControlSet\Control\FileSystem" /v "LongPathsEnabled" /t REG_DWORD /d 1 /f
 
       - name: Get repository name.
         shell: bash
@@ -106,7 +105,7 @@ jobs:
 
       - name: Prepare Libraries.
         run: |
-          %TBUILD%\%REPO_NAME%\Telegram\build\prepare\win.bat skip-release silent qt6
+          %TBUILD%\%REPO_NAME%\Telegram\build\prepare\win.bat silent qt6
 
       - name: Configure CMake and Telegram Desktop.
         shell: bash
@@ -118,25 +117,25 @@ jobs:
         shell: bash
         run: find $LibrariesPath '(' '(' ! '(' -name '*.lib' -o -name '*.a' -o -name '*.exe' -o -name '*.h' -o -name '*.hpp' -o -name '*.inc' -o -name '*.cmake' -o -name '*.pc' -o -path '*/include/*' -o -path '*/objects-*' -o -path '*/cache_keys/*' -o -path '*/patches/*' -o -path '*/nv-codec-headers/*' ')' -type f ')' -o -empty ')' -delete
 
-      - name: Build Telegram Desktop (Debug/Release).
+      - name: Build Telegram Desktop (Release).
         run: |
           cd %TBUILD%\%REPO_NAME%\Telegram
 
           call configure.bat ^
-          -G "Ninja Multi-Config" ^
+          -G "Ninja" ^
           qt6 ^
           %TDESKTOP_BUILD_API% ^
-          -D CMAKE_CONFIGURATION_TYPES=Debug ^
+          -D CMAKE_BUILD_TYPE=Release ^
           -D CMAKE_COMPILE_WARNING_AS_ERROR=OFF ^
-          -D CMAKE_MSVC_DEBUG_INFORMATION_FORMAT= ^
           -D DESKTOP_APP_DISABLE_AUTOUPDATE=ON ^
           -D DESKTOP_APP_DISABLE_CRASH_REPORTS=ON
 
-          cmake --build ..\out --config Debug --parallel
+          cmake --build ..\out --config Release --parallel
 
       - name: Prepare Portable Artifact.
         run: |
-          set OUT=%TBUILD%\%REPO_NAME%\out\Debug
+          set OUT=%TBUILD%\%REPO_NAME%\out\Release
+          if not exist %OUT% set OUT=%TBUILD%\%REPO_NAME%\out
           mkdir %GITHUB_WORKSPACE%\artifact
           if exist %OUT%\Telegram.exe copy %OUT%\Telegram.exe %GITHUB_WORKSPACE%\artifact\CatuGram.exe
           if exist %OUT%\Telegram.exe copy %OUT%\Telegram.exe %GITHUB_WORKSPACE%\artifact\Telegram.exe
